@@ -17,7 +17,7 @@ _thread_local = threading.local()
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--platform", default="DMX")
+    p.add_argument("--platform", default="OpenAI")
     p.add_argument("--model", default="gpt-4o-mini")
     p.add_argument("--data_path", default="data/")
     p.add_argument("--parallel", type=int, default=32, help="并发线程数（建议 16~128）")

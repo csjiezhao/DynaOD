@@ -14,7 +14,7 @@ DynaOD synthesizes dynamic origin-destination (OD) flows from regional attribute
 - `llm_distillation/`: scripts for exporting SFT data and visualizing control/shape trajectories.
 - `region_emb/`: BGRL-style regional embedding model used for ShapeMem retrieval.
 - `configs/`: LLaMA-Factory LoRA training and merge templates for the lightweight Qwen controller.
-- `scripts/`: helper scripts such as the vLLM OpenAI-compatible server launcher.
+- `scripts/`: helper scripts such as the vLLM server launcher and safe dataset maintenance utilities.
 - `docs/code_inventory.md`: notes on duplicate/legacy scripts and recommended cleanup.
 
 ## Data And Checkpoints
@@ -47,14 +47,21 @@ cp .env.example .env
 Generate LLM directional controls:
 
 ```bash
-python -m llm.poi_vec_generation --platform OpenAI --model gpt-4o-mini
-python -m llm.demo_vec_generation --platform OpenAI --model gpt-4o-mini
+python -m llm.poi_vec_generation --platform OpenAI --model gpt-4o-mini --mode train
+python -m llm.demo_vec_generation --platform OpenAI --model gpt-4o-mini --mode train
+```
+
+Generate control vectors with a distilled local controller:
+
+```bash
+python -m llm.poi_vec_sft --split_profile jan_apr_2019 --mode train
+python -m llm.demo_vec_sft --split_profile jan_apr_2019 --mode train
 ```
 
 Train ShapeNet with a frozen WeDAN checkpoint:
 
 ```bash
-python -m models.DynaOD.train_shapenet
+python -m models.DynaOD.train_shapenet --split_profile jan_apr_2019 --llm qwen-2.5-1.5b-sft
 ```
 
 Build ShapeMem weekday priors:
@@ -66,7 +73,7 @@ python -m models.DynaOD.shape_memory
 Run DynaOD inference:
 
 ```bash
-python -m models.DynaOD.run_inference --mode test3 --external_shape
+python -m models.DynaOD.run_inference --mode test3 --split_profile jan_apr_2019 --external_shape
 ```
 
 Run the classifier-controller ablation:

@@ -28,10 +28,8 @@ class LLMCaller:
             'gpt-4o-mini': {
                 'OpenAI': 'gpt-4o-mini-2024-07-18',
                 'OpenRouter': 'openai/gpt-4o-mini-2024-07-18',
-                'DMX': 'gpt-4o-mini-2024-07-18'
             },
             'qwen-2.5-7b':{
-                "DMX": "qwen2.5-7b-instruct",
                 "DashScope": "qwen2.5-7b-instruct",
                 "OpenRouter": "qwen/qwen-2.5-7b-instruct",
             },
@@ -55,11 +53,6 @@ class LLMCaller:
             self.client = OpenAI(
                 api_key=get_api_key(platform),
                 base_url=get_base_url(platform, "https://api.siliconflow.cn/v1")
-            )
-        elif self.platform == "DMX":
-            self.client = OpenAI(
-                api_key=get_api_key(platform),
-                base_url=get_base_url(platform, "https://www.dmxapi.cn/v1")
             )
         elif self.platform == "OpenRouter":
             self.client = OpenAI(

@@ -104,7 +104,7 @@ def load_city_data(data_path, city, date, llm):
 
     return city, graph, torch.from_numpy(dis), torch.from_numpy(scaled_od)
 
-def load_city_data0430(data_path, city, date, llm):
+def load_city_data_no_shape(data_path, city, date, llm):
     """
     加载并标准化指定城市和日期的数据
     """
@@ -159,7 +159,7 @@ def weighted_shape_average(
     return poi_agg, demo_agg, weights
 
 
-def load_samples(data_path, shuffle_cities, split_ratio, mode, is_simplify=False):
+def load_samples(data_path, shuffle_cities, split_ratio, mode, is_simplify=False, llm='gpt-4o-mini'):
     """
     获取样本，支持不同模式：'train', 'test1', 'test2', 'test3'
     """
@@ -199,7 +199,7 @@ def load_samples(data_path, shuffle_cities, split_ratio, mode, is_simplify=False
         print("*"*20, f"loading {mode} samples", "*"*20)
         for city in tqdm(sample_cities):
             for date in sample_dates:
-                geoid, graph, dis, od = load_city_data(data_path, city, date, llm='gpt-4o-mini')
+                geoid, graph, dis, od = load_city_data(data_path, city, date, llm=llm)
                 geoids.append(geoid)
                 graphs.append(graph)
                 dises.append(dis)
@@ -207,7 +207,7 @@ def load_samples(data_path, shuffle_cities, split_ratio, mode, is_simplify=False
         return geoids, graphs, dises, ods
 
 
-def load_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_simplify=False):
+def load_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_simplify=False, llm='gpt-4o-mini'):
     """
     获取样本，支持不同模式：'train', 'test1', 'test2', 'test3'
     """
@@ -247,7 +247,7 @@ def load_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_simplify
         print("*"*20, f"loading {mode} samples", "*"*20)
         for city in tqdm(sample_cities):
             for date in sample_dates:
-                geoid, graph, dis, od = load_city_data(data_path, city, date, llm='gpt-4o-mini')
+                geoid, graph, dis, od = load_city_data(data_path, city, date, llm=llm)
                 geoids.append(geoid)
                 graphs.append(graph)
                 dises.append(dis)
@@ -439,7 +439,7 @@ def load_window_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_s
             dis0 = None
 
             for d in date_list:
-                geoid, g, dis, od = load_city_data0430(data_path, city, d, llm=llm)
+                geoid, g, dis, od = load_city_data_no_shape(data_path, city, d, llm=llm)
                 day_graphs.append(g)
                 day_ods.append(od)
                 if dis0 is None:

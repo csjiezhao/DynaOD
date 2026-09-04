@@ -1,5 +1,11 @@
 from models.DynaOD.model import DynaOD
-from models.DynaOD.data_load import load_window_samples, CityWindowDataset, MyBatchSampler, collate_fn_window
+from models.DynaOD.data_load import (
+    load_window_samples,
+    load_window_samples_ijcai,
+    CityWindowDataset,
+    MyBatchSampler,
+    collate_fn_window,
+)
 from models.DynaOD.train_shapenet import test_process
 
 from setproctitle import setproctitle
@@ -19,6 +25,13 @@ def parse_args():
     p.add_argument("--ckpt_path", type=str, default="ckpts/")
     p.add_argument("--odnet_ckpt", type=str, default="ckpts/wedan_model_8400.pth")
     p.add_argument("--shape_ckpt", type=str, default="ckpts/shapenet_model_best.pth")
+    p.add_argument("--llm", type=str, default="qwen-2.5-1.5b-sft")
+    p.add_argument(
+        "--split_profile",
+        default="jan_apr_2019",
+        choices=["jan2019", "jan_apr_2019"],
+        help="date range used for evaluation",
+    )
 
     # optional inference knobs
     p.add_argument("--batch_size", type=int, default=64)
@@ -40,6 +53,8 @@ if __name__ == '__main__':
         "odnet_ckpt": args.odnet_ckpt,
         "shape_ckpt": args.shape_ckpt,
         "split_ratio": 0.7,
+        "split_profile": args.split_profile,
+        "llm": args.llm,
 
         # parameters for ShapeNet (not used in inference but kept for compatibility)
         "shapenet_lr": 5e-4,
@@ -82,11 +97,13 @@ if __name__ == '__main__':
     }
 
     # ---- load dataset ----
-    test_data = load_window_samples(
+    sample_loader = load_window_samples_ijcai if args.split_profile == "jan_apr_2019" else load_window_samples
+    test_data = sample_loader(
         data_path=model_config["data_path"],
         shuffle_cities=True,
         split_ratio=model_config["split_ratio"],
-        mode=args.mode
+        mode=args.mode,
+        llm=args.llm,
     )
     test_set = CityWindowDataset(*test_data)
     sampler = MyBatchSampler(test_set, model_config["batch_size"], model_config["max_nodes"])
@@ -99,7 +116,7 @@ if __name__ == '__main__':
 
     print(f"Beginning inference... mode={args.mode} external_shape={args.external_shape}")
     avg_all, avg_by_day = test_process(model_config, dataloader, dyna_model, poi_control=True, demo_control=True,
-                       external_shape=args.external_shape)
+                       external_shape=args.external_shape, return_by_day=True)
 
     print("ALL:", avg_all)
     for t, m in enumerate(avg_by_day):

@@ -1,9 +1,17 @@
 from models.DynaOD.model import DynaOD
-from models.DynaOD.data_load import load_window_samples, CityWindowDataset, MyBatchSampler, collate_fn_window, SCALERS
+from models.DynaOD.data_load import (
+    load_window_samples,
+    load_window_samples_ijcai,
+    CityWindowDataset,
+    MyBatchSampler,
+    collate_fn_window,
+    SCALERS,
+)
 from models.DynaOD.loss import mse_loss
 from models.WeDAN.utils.metrics import cal_od_metrics, average_listed_metrics
 
 from setproctitle import setproctitle
+import argparse
 import os
 from tqdm import tqdm
 from dgl.dataloading import GraphDataLoader
@@ -100,9 +108,10 @@ def train_process(config, dloader, model, optim, val_loader):
             best_epoch = epoch + 1
             bad_epochs = 0
 
+            ckpt_name = config.get("shape_ckpt_name") or f'shapenet_model_{config["llm"]}.pth'
             os.makedirs(config['ckpt_path'], exist_ok=True)
-            torch.save(model.state_dict(), os.path.join(config['ckpt_path'], f'shapenet_model_{config["llm"]}.pth'))
-            print(f"✅ New best RMSE={best_rmse:.2f} @ epoch {best_epoch}, saved shapenet_model__{config['llm']}.pth")
+            torch.save(model.state_dict(), os.path.join(config['ckpt_path'], ckpt_name))
+            print(f"✅ New best RMSE={best_rmse:.2f} @ epoch {best_epoch}, saved {ckpt_name}")
         else:
             bad_epochs += 1
             print(f"⏳ No RMSE improvement. bad_epochs={bad_epochs}/{patience} (best={best_rmse:.2f} @ epoch {best_epoch})")
@@ -123,7 +132,7 @@ def test_process(
     poi_control=True,
     demo_control=True,
     external_shape=False,
-    return_by_day=True,
+    return_by_day=False,
 ):
     device = config["device"]
     model.eval()
@@ -190,26 +199,62 @@ def test_process(
     return avg_metrics, avg_metrics_by_day
 
 
+def parse_args():
+    parser = argparse.ArgumentParser("Train DynaOD ShapeNet")
+    parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--data_path", default="data/")
+    parser.add_argument("--ckpt_path", default="ckpts/")
+    parser.add_argument("--odnet_ckpt", default="ckpts/wedan_model_8400.pth")
+    parser.add_argument("--split_ratio", type=float, default=0.7)
+    parser.add_argument(
+        "--split_profile",
+        default="jan_apr_2019",
+        choices=["jan2019", "jan_apr_2019"],
+        help="date range used for both training and validation",
+    )
+    parser.add_argument("--llm", default="qwen-2.5-1.5b-sft")
+    parser.add_argument("--shape_ckpt_name", default=None)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--max_nodes", type=int, default=1000)
+    parser.add_argument("--shapenet_lr", type=float, default=5e-4)
+    parser.add_argument("--shapenet_epoch", type=int, default=500)
+    return parser.parse_args()
+
+
+def load_training_split(config, mode):
+    loader = load_window_samples_ijcai if config["split_profile"] == "jan_apr_2019" else load_window_samples
+    return loader(
+        data_path=config["data_path"],
+        shuffle_cities=True,
+        split_ratio=config["split_ratio"],
+        mode=mode,
+        llm=config["llm"],
+    )
+
+
 if __name__ == '__main__':
+    args = parse_args()
     setproctitle("DynaOD-ShapeNet")
 
     model_config = {
-        "device": "cuda:0",
-        "data_path": "data/",
-        "ckpt_path": "ckpts/",
-        "odnet_ckpt": "ckpts/wedan_model_8400.pth",
-        "split_ratio": 0.7,
+        "device": args.device,
+        "data_path": args.data_path,
+        "ckpt_path": args.ckpt_path,
+        "odnet_ckpt": args.odnet_ckpt,
+        "split_ratio": args.split_ratio,
+        "split_profile": args.split_profile,
+        "shape_ckpt_name": args.shape_ckpt_name,
 
         # parameters for ShapeNet
-        "shapenet_lr": 5e-4,
-        "shapenet_epoch": 500,
+        "shapenet_lr": args.shapenet_lr,
+        "shapenet_epoch": args.shapenet_epoch,
         "lambda_smooth": 0.1,
         "alpha_stable": 2,
-        "llm": "qwen-2.5-1.5b-sft", # "qwen-2.5-1.5b-sft", "qwen-2.5-7b"
+        "llm": args.llm,
 
         # parameters for WeDAN
-        "batch_size": 8,
-        "max_nodes": 1000,
+        "batch_size": args.batch_size,
+        "max_nodes": args.max_nodes,
         "DDIM_T_sample": 2,
         "sample_times": 1,
 
@@ -243,14 +288,12 @@ if __name__ == '__main__':
         "loss": "mse",
     }
 
-    train_data = load_window_samples(data_path=model_config["data_path"], shuffle_cities=True,
-                                     split_ratio=model_config["split_ratio"], mode='train', llm=model_config["llm"])
+    train_data = load_training_split(model_config, mode='train')
     train_set = CityWindowDataset(*train_data)
     sampler = MyBatchSampler(train_set, model_config["batch_size"], model_config["max_nodes"])
     dataloader = GraphDataLoader(train_set, batch_sampler=sampler, collate_fn=collate_fn_window)
 
-    val_data = load_window_samples(data_path=model_config["data_path"], shuffle_cities=True,
-                                     split_ratio=model_config["split_ratio"], mode='test3')
+    val_data = load_training_split(model_config, mode='test3')
     val_set = CityWindowDataset(*val_data)
     val_sampler = MyBatchSampler(val_set, model_config["batch_size"], model_config["max_nodes"])
     val_loader = GraphDataLoader(val_set, batch_sampler=val_sampler, collate_fn=collate_fn_window)
