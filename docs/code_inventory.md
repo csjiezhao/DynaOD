@@ -1,28 +1,29 @@
 # DynaOD Code Inventory
 
 This note records how the public DynaOD codebase was cleaned from the original
-experiment snapshot. It is intended to keep the final release easy to navigate
-without losing track of experiment variants.
+experiment snapshot. The final paper uses the January 2019 one-month setting, so
+the old January-April/`0430` experiment branch has been removed from the public
+entry points.
 
 ## LLM Control Vector Scripts
 
 The former `0430` variants were almost identical to the non-`0430` SFT scripts.
 Their main purpose was to switch from the original online LLM setting to the
-local SFT/vLLM setting and to use the January-April 2019 data range.
+local SFT/vLLM setting and to use an experimental January-April 2019 data range.
 
 The cleaned release keeps one POI SFT script and one demographic SFT script:
 
 - `llm/poi_vec_sft.py`
 - `llm/demo_vec_sft.py`
 
-Both scripts now expose `--split_profile jan2019|jan_apr_2019`, default to the
-distilled `qwen-2.5-1.5b-sft` controller through `vLLM`, and replace the deleted
-`*_0430.py` entry points.
+Both scripts default to the distilled `qwen-2.5-1.5b-sft` controller through
+`vLLM` and use the paper's January 2019 data range through `load_samples(...)`.
+The deleted `*_0430.py` entry points are no longer needed.
 
 ## ShapeNet Training Scripts
 
 The former `models/DynaOD/train_0430.py` duplicated
-`models/DynaOD/train_shapenet.py`. It existed mainly to train on the
+`models/DynaOD/train_shapenet.py`. It existed mainly to train on the experimental
 January-April 2019 window, but it mixed January-April training with January-only
 validation and omitted the validation `llm` argument.
 
@@ -31,23 +32,19 @@ point:
 
 - `models/DynaOD/train_shapenet.py`
 
-This script now accepts `--split_profile jan2019|jan_apr_2019`, `--llm`, and
-`--shape_ckpt_name`. Training and validation use the same split profile and the
-same `llm` value.
+`models/DynaOD/train_shapenet.py` is now the only ShapeNet training entry point.
+It accepts `--llm` and `--shape_ckpt_name`, and uses the paper's January 2019
+data range for both training and validation.
 
 ## Dataset Loading Variants
 
-`models/DynaOD/data_load.py` contains both January-only and January-April data
-loaders:
+`models/DynaOD/data_load.py` now keeps the January 2019 data loaders used by the
+paper:
 
 - `load_samples(...)`: city/date samples for January 1-31, 2019.
-- `load_samples_ijcai(...)`: city/date samples for January 1-April 30, 2019.
 - `load_window_samples(...)`: windowed samples for January 2019.
-- `load_window_samples_ijcai(...)`: windowed samples for January-April 2019.
 - `load_city_data(...)`: loads control vectors and optional ShapeMem priors
   (`poi_shp`, `demo_shp`) when those files exist.
-- `load_city_data_no_shape(...)`: loads control vectors but does not load ShapeMem
-  prior tensors.
 
 The non-window loaders now also accept an `llm` argument instead of hardcoding
 `gpt-4o-mini`.
@@ -70,6 +67,6 @@ The cleaned public release now follows this structure:
 
 - One POI SFT vector generation script.
 - One demographic SFT vector generation script.
-- One ShapeNet training script with explicit split/model arguments.
+- One ShapeNet training script for the paper's one-month data setting.
 - One inference path for the final model.
 - Destructive data maintenance scripts outside `models/` and dry-run by default.

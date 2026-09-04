@@ -11,7 +11,7 @@ from json_repair import repair_json
 
 from llm.llm_api import LLMCaller
 from llm_distillation.ctrl_vec_readout import POI_CTRL_PROMPT
-from models.DynaOD.data_load import load_samples, load_samples_ijcai
+from models.DynaOD.data_load import load_samples
 
 _thread_local = threading.local()
 
@@ -21,23 +21,11 @@ def parse_args():
     p.add_argument("--platform", default="vLLM")
     p.add_argument("--model", default="qwen-2.5-1.5b-sft")
     p.add_argument("--data_path", default="data/")
-    p.add_argument(
-        "--split_profile",
-        default="jan_apr_2019",
-        choices=["jan2019", "jan_apr_2019"],
-        help="date range used to generate control vectors",
-    )
     p.add_argument("--parallel", type=int, default=32, help="并发线程数（建议 16~128）")
     p.add_argument("--overwrite", action="store_true", help="覆盖已存在文件")
     p.add_argument("--max_tracts", type=int, default=None, help="调试：每个城市只跑前 N 个 tract")
     p.add_argument("--mode", type=str, default="train", choices=["train", "test1", "test2", "test3"])
     return p.parse_args()
-
-
-def load_split_samples(args):
-    loader = load_samples_ijcai if args.split_profile == "jan_apr_2019" else load_samples
-    return loader(args.data_path, True, 0.7, args.mode, True)
-
 
 def load_city2tract(json_path="county2tract.json"):
     with open(json_path, encoding="utf-8") as f:
@@ -102,7 +90,7 @@ def process_city_date(city_id: str, date: str, args, city2tract: dict, pool: Thr
 def main():
     args = parse_args()
     city2tract = load_city2tract()
-    cities, dates = load_split_samples(args)
+    cities, dates = load_samples(args.data_path, True, 0.7, args.mode, True)
 
     tasks = [(c, d) for c in cities for d in dates]
 

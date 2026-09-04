@@ -1,7 +1,6 @@
 from models.DynaOD.model import DynaOD
 from models.DynaOD.data_load import (
     load_window_samples,
-    load_window_samples_ijcai,
     CityWindowDataset,
     MyBatchSampler,
     collate_fn_window,
@@ -26,12 +25,6 @@ def parse_args():
     p.add_argument("--odnet_ckpt", type=str, default="ckpts/wedan_model_8400.pth")
     p.add_argument("--shape_ckpt", type=str, default="ckpts/shapenet_model_best.pth")
     p.add_argument("--llm", type=str, default="qwen-2.5-1.5b-sft")
-    p.add_argument(
-        "--split_profile",
-        default="jan_apr_2019",
-        choices=["jan2019", "jan_apr_2019"],
-        help="date range used for evaluation",
-    )
 
     # optional inference knobs
     p.add_argument("--batch_size", type=int, default=64)
@@ -53,7 +46,6 @@ if __name__ == '__main__':
         "odnet_ckpt": args.odnet_ckpt,
         "shape_ckpt": args.shape_ckpt,
         "split_ratio": 0.7,
-        "split_profile": args.split_profile,
         "llm": args.llm,
 
         # parameters for ShapeNet (not used in inference but kept for compatibility)
@@ -97,8 +89,7 @@ if __name__ == '__main__':
     }
 
     # ---- load dataset ----
-    sample_loader = load_window_samples_ijcai if args.split_profile == "jan_apr_2019" else load_window_samples
-    test_data = sample_loader(
+    test_data = load_window_samples(
         data_path=model_config["data_path"],
         shuffle_cities=True,
         split_ratio=model_config["split_ratio"],

@@ -1,7 +1,6 @@
 from models.DynaOD.model import DynaOD
 from models.DynaOD.data_load import (
     load_window_samples,
-    load_window_samples_ijcai,
     CityWindowDataset,
     MyBatchSampler,
     collate_fn_window,
@@ -206,12 +205,6 @@ def parse_args():
     parser.add_argument("--ckpt_path", default="ckpts/")
     parser.add_argument("--odnet_ckpt", default="ckpts/wedan_model_8400.pth")
     parser.add_argument("--split_ratio", type=float, default=0.7)
-    parser.add_argument(
-        "--split_profile",
-        default="jan_apr_2019",
-        choices=["jan2019", "jan_apr_2019"],
-        help="date range used for both training and validation",
-    )
     parser.add_argument("--llm", default="qwen-2.5-1.5b-sft")
     parser.add_argument("--shape_ckpt_name", default=None)
     parser.add_argument("--batch_size", type=int, default=8)
@@ -222,8 +215,7 @@ def parse_args():
 
 
 def load_training_split(config, mode):
-    loader = load_window_samples_ijcai if config["split_profile"] == "jan_apr_2019" else load_window_samples
-    return loader(
+    return load_window_samples(
         data_path=config["data_path"],
         shuffle_cities=True,
         split_ratio=config["split_ratio"],
@@ -242,7 +234,6 @@ if __name__ == '__main__':
         "ckpt_path": args.ckpt_path,
         "odnet_ckpt": args.odnet_ckpt,
         "split_ratio": args.split_ratio,
-        "split_profile": args.split_profile,
         "shape_ckpt_name": args.shape_ckpt_name,
 
         # parameters for ShapeNet

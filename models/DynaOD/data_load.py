@@ -104,40 +104,6 @@ def load_city_data(data_path, city, date, llm):
 
     return city, graph, torch.from_numpy(dis), torch.from_numpy(scaled_od)
 
-def load_city_data_no_shape(data_path, city, date, llm):
-    """
-    加载并标准化指定城市和日期的数据
-    """
-    demos = np.load(os.path.join(data_path, city, "demos.npy")).astype(np.float32)
-    pois = np.load(os.path.join(data_path, city, "pois.npy")).astype(np.float32)
-    dis = np.load(os.path.join(data_path, city, "dis.npy")).astype(np.float32)
-    od = np.load(os.path.join(data_path, city, f'ods/{date}_od.npy')).astype(np.float32)
-
-    t_context = extract_date_features(date)
-    n_nodes = od.shape[0]
-    t_context = np.tile(t_context, (n_nodes, 1)).astype(np.float32)
-
-    poi_ctrl_vec = np.load(os.path.join(data_path, city, "poi_vecs",  f"{llm}_poi_vec_{date}.npy")).astype(np.float32)
-    demo_ctrl_vec = np.load(os.path.join(data_path, city, "demo_vecs", f"{llm}_demo_vec_{date}.npy")).astype(np.float32)
-
-
-    # 特征处理
-    nfeat = np.concatenate((demos, pois), axis=1)
-    np.fill_diagonal(od, 0)
-    scaled_od = SCALERS['od_normer'].fit_transform(od)
-    nfeat = SCALERS['feat'].transform(nfeat)
-    dis = SCALERS['dis'].transform(dis.reshape(-1, 1)).reshape(dis.shape)
-    scaled_od = SCALERS['od'].transform(scaled_od.reshape(-1, 1)).reshape(scaled_od.shape)
-
-    # 创建图
-    graph = dgl.graph(od.nonzero(), num_nodes=od.shape[0])
-    graph.ndata["demo"] = torch.from_numpy(nfeat)
-    graph.ndata["t_context"] = torch.from_numpy(t_context)
-    graph.ndata["poi_vec"] = torch.from_numpy(poi_ctrl_vec)
-    graph.ndata["demo_vec"] = torch.from_numpy(demo_ctrl_vec)
-
-    return city, graph, torch.from_numpy(dis), torch.from_numpy(scaled_od)
-
 def weighted_shape_average(
     poi_shp: np.ndarray,      # (N,K,poi_dim)
     demo_shp: np.ndarray,     # (N,K,demo_dim)
@@ -176,54 +142,6 @@ def load_samples(data_path, shuffle_cities, split_ratio, mode, is_simplify=False
 
     # 获取日期范围并切分
     dates = pd.date_range(start='2019-01-01', end='2019-01-31').strftime('%Y_%m_%d').tolist()
-    time_split_point = int(len(dates) * split_ratio)
-    seen_dates = dates[:time_split_point]
-    unseen_dates = dates[time_split_point:]
-
-    # 模式选择
-    sample_settings = {
-        'train': (seen_cities, seen_dates),
-        'test1': (seen_cities, unseen_dates),
-        'test2': (unseen_cities, seen_dates),
-        'test3': (unseen_cities, unseen_dates)
-    }
-
-    # 获取当前模式对应的城市和日期
-    sample_cities, sample_dates = sample_settings.get(mode, ([], []))
-
-    if is_simplify:
-        return sample_cities, sample_dates
-    else:
-        # 创建样本
-        geoids, graphs, dises, ods = [], [], [], []
-        print("*"*20, f"loading {mode} samples", "*"*20)
-        for city in tqdm(sample_cities):
-            for date in sample_dates:
-                geoid, graph, dis, od = load_city_data(data_path, city, date, llm=llm)
-                geoids.append(geoid)
-                graphs.append(graph)
-                dises.append(dis)
-                ods.append(od)
-        return geoids, graphs, dises, ods
-
-
-def load_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_simplify=False, llm='gpt-4o-mini'):
-    """
-    获取样本，支持不同模式：'train', 'test1', 'test2', 'test3'
-    """
-    # # 获取城市列表
-    # cities = os.listdir(data_path)[:500]
-    # if shuffle_cities == 1:
-    #     shuffle(cities)
-    #
-    # # 切分城市
-    # space_split_point = int(len(cities) * split_ratio)
-    # seen_cities = cities[:space_split_point]
-    # unseen_cities = cities[space_split_point:]
-    cities, seen_cities, unseen_cities = load_persisted_cities("ckpts/")
-
-    # 获取日期范围并切分
-    dates = pd.date_range(start='2019-01-01', end='2019-04-30').strftime('%Y_%m_%d').tolist()
     time_split_point = int(len(dates) * split_ratio)
     seen_dates = dates[:time_split_point]
     unseen_dates = dates[time_split_point:]
@@ -396,50 +314,6 @@ def load_window_samples(data_path, shuffle_cities, split_ratio, mode, is_simplif
 
             for d in date_list:
                 geoid, g, dis, od = load_city_data(data_path, city, d, llm=llm)
-                day_graphs.append(g)
-                day_ods.append(od)
-                if dis0 is None:
-                    dis0 = dis
-
-            geoids.append(f"{city}_{win_id}")
-            graphs_seqs.append(day_graphs)  # list length = len(date_list)
-            dises.append(dis0)
-            ods_seqs.append(day_ods)  # list length = len(date_list)
-
-    return geoids, graphs_seqs, dises, ods_seqs
-
-
-def load_window_samples_ijcai(data_path, shuffle_cities, split_ratio, mode, is_simplify=False, T=7, llm='gpt-4o-mini'):
-    cities, seen_cities, unseen_cities = load_persisted_cities("ckpts/")
-
-    dates = pd.date_range(start='2019-01-01', end='2019-04-30').strftime('%Y_%m_%d').tolist()
-    time_split_point = int(len(dates) * split_ratio)  # 31*0.7=21
-    seen_dates = dates[:time_split_point]
-    unseen_dates = dates[time_split_point:][-7:]  # 7 days
-
-    seen_windows = split_into_windows(seen_dates, T=T)  # 3 windows of len 7
-    unseen_windows = split_into_windows(unseen_dates, T=T)
-
-    sample_settings = {
-        'train': (seen_cities, seen_windows),
-        'test1': (seen_cities, unseen_windows),
-        'test2': (unseen_cities, seen_windows),
-        'test3': (unseen_cities, unseen_windows),
-    }
-    sample_cities, sample_windows = sample_settings.get(mode, ([], []))
-    if is_simplify:
-        return sample_cities, sample_windows
-
-    geoids, graphs_seqs, dises, ods_seqs = [], [], [], []
-    print("*" * 20, f"loading {mode} windowed samples", "*" * 20)
-
-    for city in tqdm(sample_cities):
-        for win_id, date_list in enumerate(sample_windows):
-            day_graphs, day_ods = [], []
-            dis0 = None
-
-            for d in date_list:
-                geoid, g, dis, od = load_city_data_no_shape(data_path, city, d, llm=llm)
                 day_graphs.append(g)
                 day_ods.append(od)
                 if dis0 is None:

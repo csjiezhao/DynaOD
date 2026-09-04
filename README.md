@@ -54,14 +54,14 @@ python -m llm.demo_vec_generation --platform OpenAI --model gpt-4o-mini --mode t
 Generate control vectors with a distilled local controller:
 
 ```bash
-python -m llm.poi_vec_sft --split_profile jan_apr_2019 --mode train
-python -m llm.demo_vec_sft --split_profile jan_apr_2019 --mode train
+python -m llm.poi_vec_sft --mode train
+python -m llm.demo_vec_sft --mode train
 ```
 
 Train ShapeNet with a frozen WeDAN checkpoint:
 
 ```bash
-python -m models.DynaOD.train_shapenet --split_profile jan_apr_2019 --llm qwen-2.5-1.5b-sft
+python -m models.DynaOD.train_shapenet --llm qwen-2.5-1.5b-sft
 ```
 
 Build ShapeMem weekday priors:
@@ -73,7 +73,7 @@ python -m models.DynaOD.shape_memory
 Run DynaOD inference:
 
 ```bash
-python -m models.DynaOD.run_inference --mode test3 --split_profile jan_apr_2019 --external_shape
+python -m models.DynaOD.run_inference --mode test3 --external_shape
 ```
 
 Run the classifier-controller ablation:
