@@ -15,7 +15,6 @@ DynaOD synthesizes dynamic origin-destination (OD) flows from regional attribute
 - `region_emb/`: BGRL-style regional embedding model used for ShapeMem retrieval.
 - `configs/`: LLaMA-Factory LoRA training and merge templates for the lightweight Qwen controller.
 - `scripts/`: helper scripts such as the vLLM server launcher and safe dataset maintenance utilities.
-- `docs/code_inventory.md`: notes on duplicate/legacy scripts and recommended cleanup.
 
 ## Data And Checkpoints
 
