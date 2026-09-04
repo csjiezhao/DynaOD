@@ -1,0 +1,11 @@
+### model
+model_name_or_path: ${QWEN_MODEL_PATH}
+adapter_name_or_path: ${DYNAOD_LORA_OUTPUT_DIR}
+template: qwen
+finetuning_type: lora
+
+### export
+export_dir: ${DYNAOD_MERGED_MODEL_DIR}
+export_size: 2
+export_device: cpu
+export_legacy_format: false

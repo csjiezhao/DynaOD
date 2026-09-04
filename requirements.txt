@@ -1,0 +1,17 @@
+dgl
+geopandas
+holidays
+json-repair
+matplotlib
+networkx
+numpy
+openai
+pandas
+python-dotenv
+scikit-learn
+scipy
+setproctitle
+tenacity
+tiktoken
+torch
+tqdm
