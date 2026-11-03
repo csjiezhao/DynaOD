@@ -18,14 +18,42 @@ DynaOD synthesizes dynamic origin-destination (OD) flows from regional attribute
 
 ## Data And Checkpoints
 
-Large artifacts are intentionally not tracked by Git:
+Large artifacts are intentionally not tracked by Git. The paper reproduction
+bundle is available from [Google Drive](https://drive.google.com/file/d/1sXXbiJguqqUoH8XW2B9qBsDA0blABPAI/view?usp=drive_link):
 
-- `data/`: county-level tract graphs, OD matrices, LLM control vectors, and shape priors.
-- `dy_od/`: raw or processed dynamic OD data.
-- `ckpts/`: WeDAN, ShapeNet, ShapeMem, BGRL, and scaler checkpoints.
-- `sft_data/`: exported POI/DEMO instruction tuning data.
+[`DynaOD_paper_runtime_assets.tar.zst`](https://drive.google.com/file/d/1sXXbiJguqqUoH8XW2B9qBsDA0blABPAI/view?usp=drive_link) (831 MB)
 
-Place these directories at the repository root, or pass explicit paths through the command-line arguments in the scripts.
+Run the following command from the repository root after downloading the file.
+It extracts the three required paths directly into the expected locations:
+
+```bash
+zstd -dc DynaOD_paper_runtime_assets.tar.zst | tar -xf -
+```
+
+| Path | Contents | Required by |
+| --- | --- | --- |
+| `county2tract.json` | County-to-tract mapping for all 500 counties. | Control-vector generation and ShapeMem retrieval. |
+| `data/` | January 2019 data for 500 counties: static POI/DEMO features, distance and adjacency matrices, daily OD matrices, GPT-4o-mini and Qwen-SFT control vectors, plus external shape priors. | DynaOD/ShapeNet training and inference. |
+| `ckpts/` | City split, scalers, WeDAN, final SFT ShapeNet, ShapeMem, regional embeddings, and BGRL checkpoints. | Training, inference, and external-shape generation. |
+
+The released `data/` contains 15,500 daily OD matrices (500 counties x 31
+days) and two January control-vector sources: `gpt-4o-mini` and
+`qwen-2.5-1.5b-sft`. Shape priors are included for January 1-21 and January
+25-31, matching the 7-day windows used by the code. The final SFT ShapeNet
+weight is available under both `shapenet_model_qwen-2.5-1.5b-sft.pth` and
+`shapenet_model_best.pth`; the latter matches the default inference path.
+
+The following large artifacts are not included in the paper reproduction bundle:
+
+- `dy_od/`: raw dynamic OD source data, not required by the released pipeline.
+- `sft_data/`: POI/DEMO instruction-tuning JSONL data.
+- The Qwen LoRA adapter and merged serving model.
+
+The archive checksum is:
+
+```text
+24ccd9a10d6473a5dcd51dc3ac79fd1ce5b10b574be451be7f0742c93b21a161
+```
 
 ## Environment
 
